@@ -397,6 +397,9 @@ public class MainActivity extends Activity {
         else if (rest.startsWith("air-quality")) host = "https://air-quality-api.open-meteo.com/v1/air-quality";
         else if (rest.startsWith("geocode")) host = "https://geocoding-api.open-meteo.com/v1/search";
         else return json(404, "{\"ok\":false,\"error\":\"unknown om sub\"}");
+        // query 是原样拼进出站 URL 的，必须先限制字符集，挡住 CRLF/`@`/`#` 等
+        // 注入手法，避免被用来篡改实际请求的目标或走私请求头（参考 cma() 的站号校验）。
+        if (query == null || !query.matches("^[A-Za-z0-9&=._,:%+-]*$")) return bad();
         try {
             return json(200, utf8(fetch(host + "?" + query, null, 20000)));
         } catch (Exception e) {
