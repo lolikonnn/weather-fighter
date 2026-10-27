@@ -7,7 +7,7 @@
 <title>天气战士 · 老实看天气很枯燥吧？</title>
 <meta name="author" content="lolikonnn">
 <meta name="description" content="把气温当成股价来看的天气终端：蜡烛图、分时、日周月K、降水/风/云量/空气，还有雷达回波、卫星云图、降水预报、台风路径、预警信号。老实看天气很枯燥吧？">
-<link rel="stylesheet" href="css/app.css?v=8bfcdb9e">
+<link rel="stylesheet" href="css/app.css?v=df42b2ba">
 <link rel="stylesheet" href="css/game.css?v=5fa3d7f6">
 <link rel="icon" type="image/png" href="img/logo-32.png?v=189dcbb4">
 </head>
@@ -578,6 +578,7 @@
         <dt>雷达 / 云图 / 台风 / 预警</dt><dd>中国气象局：雷达拼图与卫星云图来自图片库 image.nmc.cn，台风路径与预警信号来自 typhoon.nmc.cn。</dd>
         <dt>天文</dt><dd>逐小时云量／能见度／分层云量、气溶胶，以及逐月气候（近十年）来自 Open-Meteo；Kp／太阳黑子／耀斑来自 NOAA；光污染等级来自 David Lorenz 的光污染地图集；其余（日月位置、月相、黄金／蓝调时刻、亮星与行星方位、流星雨表）全部在本地推算，不联网。</dd>
         <dt>潮汐</dt><dd>调和常数来自 <b>Neaps tide-database</b> 的 TICON-4（GESLA-4／UHSLC 实测水位的调和分析）与 NOAA CO-OPS，许可 <b>CC BY 4.0</b>；本站把它离线烘成一张站表，再用 MIT 许可的 @neaps/tide-predictor 在<b>本地</b>求 50 个分潮的和。<b>只有沿海那 16 个站</b>，内陆地市会如实显示"附近没有潮汐站"；离本城较远的站会在页脚写明"参考站 + 距离"。这是<b>天文潮</b>，不含风暴增水与气压效应，<b>不可用于航海</b>。</dd>
+        <dt>城市目录</dt><dd>国内 352 个地级市的站号与坐标来自中国气象局。另有 <b>189 座海外城市</b>（东京、墨尔本、奥克兰…）的坐标与时区取自 Open-Meteo 的 geocoding 接口，那份底子是 <b>GeoNames</b>，许可 <b>CC BY 4.0</b>。海外城市只有图表能用（实况、K 线、副图、天文、地震、海温），雷达／云图／降水／台风／预警这些<b>只覆盖中国</b>的页面会如实说明。</dd>
       </dl>
       <p class="help-foot">一句话：<b>把"气温"当成"股价"看</b>。红色＝升温，绿色＝降温，蜡烛＝一天，均线＝平均气温。
         <span class="dim" style="font-weight:400">· Android 安装包 v9.4.7</span></p>
@@ -734,12 +735,12 @@ window.__TJS_LOCAL__ = /^(127\.0\.0\.1|localhost|\[::1\]|tjs\.local)$/.test(loca
 <script src="vendor/neaps-tide.js"></script>
 <script src="js/util.js?v=6c940322"></script>
 <script src="js/indicators.js?v=1677e654"></script>
-<script src="js/api.js?v=cb75de99"></script>
+<script src="js/api.js?v=b3fc1752"></script>
 <script src="js/chart.js?v=e73e7377"></script>
 <script src="js/weather.js?v=9885ca1c"></script>
 <script src="js/astro.js?v=cb2e6291"></script>
 <script src="js/tide.js?v=e2499ad0"></script>
-<script src="js/wxui.js?v=ac0dc499"></script>
+<script src="js/wxui.js?v=64908710"></script>
 <script src="js/app.js?v=36e578b4"></script>
 <script src="js/game.js?v=3b675c5d"></script>
 </body>

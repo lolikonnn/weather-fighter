@@ -152,10 +152,52 @@
   /* ───────── 城市的当地时钟 ─────────
      全站把 Open-Meteo 的墙钟串当**本机时间**解析，所以「现在」也得换成城市当地的墙钟，
      两边才比得齐。中国城市没有 tz 字段，按北京时间 —— 海外用户看中国城市也因此对了。 */
+  /* 每个时区一个 Intl.DateTimeFormat，建一次就复用（别每次刷新都 new 一个）。 */
+  const TZ_FMT = {};
+  /* 把一个时刻换算成某个时区的墙钟，返回 {y, mo, d, h, mi, s, ms}；时区名不认识就返回 null。
+     ⚠ 不要用 `toLocaleString('sv-SE')` 再 `new Date()` 把字符串解析回来 —— 那是碰巧能跑：
+        'sv-SE' 的具体格式是实现细节（不同引擎的分隔符/是否带秒并不保证），
+        `.replace(' ', 'T')` 也只换第一个空格。老 WebView 解析失败时会**静默退回本机时间**，
+        于是"今天"按本机时区算，海外用户看墨尔本会整体错一天。
+        formatToParts 拿的是逐段数值，不依赖任何字符串格式。 */
+  function tzWall(tz, at) {
+    const key = tz || 'Asia/Shanghai';
+    let f = TZ_FMT[key];
+    if (f === undefined) {
+      try {
+        f = new Intl.DateTimeFormat('en-US', {
+          timeZone: key, hourCycle: 'h23',
+          year: 'numeric', month: '2-digit', day: '2-digit',
+          hour: '2-digit', minute: '2-digit', second: '2-digit'
+        });
+        if (!f.formatToParts) f = null;      // 太老的引擎：走上层兜底
+      } catch (e) {
+        f = null;                            // 时区名不认识 / 不支持 IANA 名
+      }
+      TZ_FMT[key] = f;
+    }
+    if (!f) return null;
+    const o = {};
+    f.formatToParts(new Date(at)).forEach(function (part) {
+      if (part.type !== 'literal') o[part.type] = part.value;
+    });
+    const y = +o.year, mo = +o.month, d = +o.day;
+    if (!(y > 1900 && mo >= 1 && mo <= 12 && d >= 1 && d <= 31)) return null;
+    return { y: y, mo: mo, d: d, h: (+o.hour) % 24, mi: +o.minute || 0, s: +o.second || 0,
+             ms: new Date(at).getMilliseconds() };
+  }
   function cityNow(city, ms) {
     const at = ms == null ? Date.now() : ms;
-    const d = new Date(new Date(at).toLocaleString('sv-SE', { timeZone: (city && city.tz) || 'Asia/Shanghai' }).replace(' ', 'T'));
-    return isFinite(d) ? d : new Date(at);
+    const tz = (city && city.tz) || 'Asia/Shanghai';
+    const w = tzWall(tz, at);
+    if (w) return new Date(w.y, w.mo - 1, w.d, w.h, w.mi, w.s, w.ms);
+    /* 兜底一：老引擎没有 formatToParts 时，沿用上一版的字符串解析（能用就先用着）。 */
+    try {
+      const d = new Date(new Date(at).toLocaleString('sv-SE', { timeZone: tz }).replace(' ', 'T'));
+      if (isFinite(d)) return d;
+    } catch (e) {}
+    /* 兜底二：连时区都不认，只能用本机时间 —— 这时"今天"可能差一天，但页面不会崩。 */
+    return new Date(at);
   }
   function todayStr(city) { return fmtDate(cityNow(city)); }
   function shiftDate(s, days) {

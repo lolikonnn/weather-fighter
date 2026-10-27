@@ -1260,6 +1260,40 @@
       if (el && !el.hidden) this.openAstro();
     },
 
+    /* ── 只覆盖中国的功能 ──
+       雷达回波、卫星云图、降水预报、台风路径、预警信号，数据源全是境内产品
+       （image.nmc.cn 的拼图、中央气象台的台风与预警）。海外城市下不拦的话，
+       要么画出一张中国全国的图，要么一本正经地报"全国生效中 0 条" ——
+       后者读起来就是"墨尔本没有预警"，是错的。所以直接说清楚，不装。 */
+    CHINA_ONLY: {
+      wxRadar: '雷达回波',
+      wxSat: '卫星云图',
+      wxPrecip: '降水预报',
+      wxTy: '台风路径',
+      wxWarn: '预警信号'
+    },
+    /* 是海外城市且这个抽屉只覆盖中国 ⇒ 铺一句说明并返回 true（调用方跳过原本的渲染）。 */
+    chinaNote(id) {
+      // ⚠ 是 window.__APP —— 全局只有带双下划线那一个（见上面 1050 行那条教训）。
+      const app = window.__APP;
+      const c = (app && app.S && app.S.cur) || null;
+      if (!c || !c.world || !this.CHINA_ONLY[id]) return false;
+      const sub = document.getElementById(id + 'Sub');
+      const body = document.getElementById(id + 'Body');
+      if (sub) sub.textContent = c.name;
+      if (body) {
+        body.innerHTML =
+          '<div class="wx-cn-only">' +
+            '<p class="wx-cn-t">抱歉，当前功能只支持中国地区</p>' +
+            '<p class="wx-cn-s">你现在看的是 <b>' + esc(c.name) + '</b>' +
+            (c.prov ? '（' + esc(c.prov) + '）' : '') +
+            '。<b>' + this.CHINA_ONLY[id] + '</b>用的数据源只覆盖中国大陆，' +
+            '切回国内城市就能看。</p>' +
+          '</div>';
+      }
+      return true;
+    },
+
     /* 通用开关 */
     open(id) {
       // 抽屉一开就把图表的信息框收掉。chart.js 里那个"点在图表外面就收"的监听已经能
@@ -1268,6 +1302,8 @@
       if (global.Chart && global.Chart.hideTips) global.Chart.hideTips();
       const el = document.getElementById(id);
       if (el) el.hidden = false;
+      // 海外城市下，只覆盖中国的抽屉只给一句说明，不画中国的全国图。
+      if (this.chinaNote(id)) return;
       // 不传参：让 openRadar 自己决定（沿用上次的区域，或按当前城市自动定位到单站）。
       // ⚠ 不要写成 this.openRadar(this._radarReg) —— 首次打开时它是 null，
       // 而 null 不等于 undefined，会把"按城市自动选区"那段整个跳过，
