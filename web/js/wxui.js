@@ -579,7 +579,7 @@
             // 全国目录里找。⚠ 命中里既有城市也有区县，而**雷达站是按城市建的** ——
             // 搜「成都」如果连它的 20 个区县一起倒出来，就又把列表变长了。
             // 所以只要有一个城市级命中，就只给城市级；全都没有（比如搜「武侯区」）才退回区县。
-            const hits = API.Cities.search(q, 60);
+            const hits = API.Cities.search(q, 60).filter(c => !c.world);   // 雷达只有国内站
             const onlyCity = hits.filter(c => !c.place);
             const use = (onlyCity.length ? onlyCity : hits).slice(0, 30);
             paint(use.map(c => [c.id, c.name + ' · ' + shortProv(c.prov || '')]));

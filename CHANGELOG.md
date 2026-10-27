@@ -189,6 +189,18 @@
 > 全部改掉了（117 条里 60 条挪动超过 2 分钟，最大 246 分钟）。具体见本节最上面那一条。
 
 
+## 2026-10-27（20:01）— 海外城市进搜索，日 K 按当地时区切日
+
+- 搜索框能搜到 **189 座海外城市**（中文名、英文名都认，结果右侧标「海外」）。数据在 `web/data/world-cities.json`，由新脚本 `tools/build_world.py` 生成：中文名手写（geocoding 的 `language=zh` 会给繁体「倫敦」），坐标 / IANA 时区 / 人口取 Open-Meteo geocoding，国家中文名取 `/v1/get?language=zh`，金沙萨给的旧称「扎伊尔」在脚本里更正。海外城市没有气象局站号，实况和 K 线全走 Open-Meteo；雷达站搜索不收它们。
+- Open-Meteo 的请求一律改成 `timezone=auto`（`web/js/api.js`、`web/js/weather.js` 各一处常量），返回城市当地的墙钟串，日 K 按当地零点切。实测全部 352 座城市仍是 UTC+8（乌鲁木齐、喀什给的也是 `Asia/Shanghai`），中国城市的数据不变。
+- 「今天 / 现在」改按城市时区算：新增 `API.cityNow(city)`，当前 K 线定位、昨收、历史窗口、分时实线 / 虚线分界、当前小时、预报 K 窗口、小游戏切预报段都改走它；日出日落 / 月出月落先求当地 0 点再找事件，按当地时间显示；`weather.js` 改用响应里的 `utc_offset_seconds`，不再写死 `+08:00`。
+- 顺带修好：浏览器不在北京时区时，北京的分时图原来按本机时刻分界（墨尔本时区的机器上实线画到 22 点），现在按北京时间。
+- 已知限制：Open-Meteo 把**当前** UTC 偏移套在整段序列上，有夏令时的城市，另一季的历史日 K 偏 1 小时（见 `docs/NOTES.md`「海外城市按当地时区切日」）。
+- 实测（本机 `Australia/Melbourne`）：奥克兰 `today=2026-10-28`、当前 K 线 10-28、昨收取 10-27、分时整条虚线、日出日落 06:20/19:49；北京 `today=2026-10-27`、分时实线到 19 点、日出日落 06:36/17:2x。`tools/probe_astro.js` 改动前后输出一致。
+- `web/index.html` 里 6 个 JS 的 `?v=` 指纹按内容重算。`dist/` 里的 APK 这一轮没有重打，App 里仍是旧版。
+
+`commit a5ada34367db`（同一批：`ffb53f5a0eb6` 时区改造、`98c338ecc37e` 笔记）
+
 ## 2026-10-24（18:53）— 首访弹窗最前面加一句 Ciallo 问候，顺便请人去仓库看看
 
 - `web/index.html:426` 起：`.wm-body` 的第一个元素新增 `<div class="wm-hi">` —— 一行 `Ciallo〜(∠・ω&lt; )⌒☆`，下面一段撒娇口气的话，请人去 **GitHub 仓库**看看、顺手点个 star（`target="_blank" rel="noopener"`；APK 里由 `shouldOverrideUrlLoading` 交给系统浏览器）。

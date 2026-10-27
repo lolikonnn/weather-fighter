@@ -1221,6 +1221,9 @@ python tools\radar_slugs.py --workers 10     # -> web/data/radar-cities.json
 # 1c) 省/市/区县三级地名目录（联网，约 510 次请求）—— 区县级搜索靠它
 python tools\build_places.py --workers 10    # -> web/data/places.json
 
+# 1d) 海外城市目录（联网，约 380 次请求，1 分钟）—— 带 IANA 时区
+python tools\build_world.py                  # -> web/data/world-cities.json
+
 # 2) 预抓中国天气网官方数据（供 Pages 静态兜底；默认只抓 prefetch 里的 45 城）
 python tools\prefetch_official.py --workers 8
 #    想全抓 352 城加 --all（体积会明显变大，日历文件每城每月约 24 KB）
@@ -1419,6 +1422,7 @@ weather-fighter/
 ├── tools/                   数据集构建、预抓、打包脚本
 │   ├── build_catalog.py     把 352 城全量目录写回 cities.json（并单独标出预抓范围）
 │   ├── build_places.py      爬阿里 DataV 生成 data/places.json（区县级搜索兜底）
+│   ├── build_world.py       生成 data/world-cities.json（189 座海外城市，带时区）
 │   ├── radar_slugs.py       探测 352 城里哪些有单站雷达（拼 {省拼音}/{市拼音}.htm）
 │   ├── slim_world.py        把 echarts world.json 裁成 data/world.json
 │   ├── make_icon.py         从 logo-src.png 生成站标与五种密度的 launcher 图标

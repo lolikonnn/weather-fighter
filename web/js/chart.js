@@ -250,7 +250,7 @@
        画面必须能一眼看出哪半是预报，否则「今日最高 26.5」会被读成"今天到过 26.5"。
        全都在未来时（例如只剩气象局那条保底曲线，它只有未来）：实线为空、整条虚线 —— 这是**对的**，
        那本来就全是预报。 */
-    const nowKey = (() => { const n = new Date(); return U.fmtDate(n) + 'T' + U.pad2(n.getHours()); })();
+    const nowKey = (() => { const n = S.now || new Date(); return U.fmtDate(n) + 'T' + U.pad2(n.getHours()); })();
     let cutIdx = -1;
     for (let i = 0; i < xs.length; i++) {
       if (String(xs[i]).replace(' ', 'T').slice(0, 13) <= nowKey) cutIdx = i;

@@ -8,7 +8,10 @@
   'use strict';
   const { storeGet, storeSet, storeDel, fmtDate, pad2, parseISO } = U;
 
-  const TZ = 'Asia/Shanghai';
+  /* Open-Meteo 按坐标自选时区，返回城市**当地**的墙钟串，日 K 因此按当地零点切。
+     实测（2026-10-27）全部 352 座城市 auto 都是 UTC+8（含乌鲁木齐 / 喀什），中国城市行为不变。
+     ⚠ 它把**当前**的 UTC 偏移套在整段序列上：有夏令时的城市，另一季的历史会偏 1 小时。 */
+  const TZ = 'auto';
   const CMA = 'https://weather.cma.cn';
   const OM_A = 'https://archive-api.open-meteo.com/v1/archive';
   /* archive 的备胎：historical-forecast 同样吃 start_date/end_date，而且跟 archive 主机
@@ -146,7 +149,15 @@
   }
 
   /* ───────── 日期工具 ───────── */
-  function todayStr() { return fmtDate(new Date()); }
+  /* ───────── 城市的当地时钟 ─────────
+     全站把 Open-Meteo 的墙钟串当**本机时间**解析，所以「现在」也得换成城市当地的墙钟，
+     两边才比得齐。中国城市没有 tz 字段，按北京时间 —— 海外用户看中国城市也因此对了。 */
+  function cityNow(city, ms) {
+    const at = ms == null ? Date.now() : ms;
+    const d = new Date(new Date(at).toLocaleString('sv-SE', { timeZone: (city && city.tz) || 'Asia/Shanghai' }).replace(' ', 'T'));
+    return isFinite(d) ? d : new Date(at);
+  }
+  function todayStr(city) { return fmtDate(cityNow(city)); }
   function shiftDate(s, days) {
     const d = U.parseDate(s); d.setDate(d.getDate() + days); return fmtDate(d);
   }
@@ -159,7 +170,7 @@
 
   /* ═══════════════ 1. 城市数据集 ═══════════════ */
   const Cities = {
-    all: [], hot: [], byId: {}, places: [],
+    all: [], hot: [], byId: {}, places: [], world: [],
     async load() {
       if (this.all.length) return this;
       const d = await getJSON('data/cities.json?ts=' + Math.floor(Date.now() / 3600000), { ttl: 3600000 });
@@ -178,7 +189,24 @@
       if (!this.hot.length) this.hot = this.all.slice(0, 20);
       this.updated = d.updated;
       await this.loadPlaces();          // 拿不到也不影响主目录
+      await this.loadWorld();
       return this;
+    },
+    /** 海外城市（tools/build_world.py 生成）。跟 places 一样只进搜索和 byId，天气全走
+     *  Open-Meteo 按坐标取；带 IANA 时区 tz，「今天 / 现在」按它算（见 cityNow）。 */
+    async loadWorld() {
+      if (this.world.length) return this.world;
+      let d;
+      try {
+        d = await getJSON('data/world-cities.json?ts=' + Math.floor(Date.now() / 86400000), { ttl: 86400000 });
+      } catch (e) { return this.world; }
+      this.world = (d.cities || []).map(c => {
+        c.cma = ''; c.world = true;
+        c.search = (c.name + ' ' + c.prov + ' ' + c.en + ' ' + c.py + ' ' + c.id).toLowerCase();
+        if (!this.byId[c.id]) this.byId[c.id] = c;
+        return c;
+      });
+      return this.world;
     },
     /** 省 / 地级市 / 区县三级地名目录（带中心点经纬度）。
      *  cities.json 只有 352 个**地级市**（源自气象局站号表），所以义乌、昆山、
@@ -234,6 +262,7 @@
       };
       scan(this.all, 0);
       scan(this.places, -5);            // 同分时优先有气象局站号的城市
+      scan(this.world, -5);
       out.sort((a, b) => b.score - a.score);
       return out.slice(0, limit || 40).map(o => o.c);
     }
@@ -1081,6 +1110,8 @@
      * 失败返回 null（游戏那边会把大盘项退化成 0，纯本地行情照跑）。
      */
     async regionIndex(city, maxCities) {
+      // 候选只有国内城市：海外城市退到「最近的几座」会拼进几千公里外的城市，时间轴还差几个时区
+      if (city.world) return null;
       const N = maxCities || 8;
       const all = (Cities.all || []).filter(c => c && c.lat != null && c.lon != null);
       let list = all.filter(c => c.prov && c.prov === city.prov);
@@ -1383,7 +1414,7 @@
      */
     async brief(city) {
       if (!city || !city.id) return null;
-      const today = todayStr();
+      const today = todayStr(city);
 
       // 只保留"今天以前 + 带实测高低温"的日子，日均温当作那天的收盘价
       const collect = function (arr) {
@@ -1877,8 +1908,8 @@
       step('正在拉取 ' + city.name + ' 的行情…');
       const hasLL = city.lat != null && city.lon != null;
       // 历史窗口故意停在「今天-93」：最后 92 天 + 未来 16 天由 recent 接上
-      const archStart = shiftDate(todayStr(), -560);
-      const archEnd = shiftDate(todayStr(), -93);
+      const archStart = shiftDate(todayStr(city), -560);
+      const archEnd = shiftDate(todayStr(city), -93);
       const [now0, fcst, hist0, recent0, official, cnPair, cmaH] = await Promise.all([
         // ★ 强制取最新：`loadCity` 只在「打开页面 / 切城市 / 30 分钟全量重载」时跑，
         //   一次一个城市，用 10 秒 TTL 换"打开就是最新的"完全划算（理由见 CMA_FRESH_MS）。
@@ -2023,7 +2054,7 @@
       const month = IND.aggregate(daily, 'month');
 
       // 今日在 daily 中的下标（Open-Meteo 含未来 16 天预报，必须按日期定位"当前K线"）
-      const today = todayStr();
+      const today = todayStr(city);
       let ti = daily.findIndex(b => b.d === today);
       if (ti < 0) { // 时区/边界情况：取最后一个不晚于今天的
         ti = -1;
@@ -2148,7 +2179,7 @@
       if (!daily || daily.length < 2) return null;
       const last = daily[daily.length - 1];
       // 若最后一根是"今日未完成"，昨收 = 前一根收盘
-      const today = todayStr();
+      const today = todayStr(city);
       if (last.d === today || last.d >= today) {
         const p = daily[daily.length - 2];
         return p ? p.c : null;
@@ -2297,5 +2328,5 @@
   };
 
   global.U = U;
-  global.API = { Cities, Cma, OpenMeteo, Cn, Store, SWPC, Quakes, LP, Climate, reduceClimate, LOCAL, wmoText, todayStr, shiftDate, toDailyBars, toHourlyPoints, getJSON, num, overlayCma };
+  global.API = { Cities, Cma, OpenMeteo, Cn, Store, SWPC, Quakes, LP, Climate, reduceClimate, LOCAL, wmoText, todayStr, cityNow, shiftDate, toDailyBars, toHourlyPoints, getJSON, num, overlayCma };
 })(window);

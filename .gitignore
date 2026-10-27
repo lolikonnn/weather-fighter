@@ -33,4 +33,10 @@ data/crypto/
 # ── 部署时临时拷进站点的安装包（源在 dist/，由 .github/workflows/deploy.yml 拷贝） ──
 web/dist/
 
+# IDE and AI tools
+.idea/
+*.iml
+.vscode/
+.claude/
+
 # ── 保留产物：dist/ 里的 apk 是要发布给用户下载的，所以不忽略 ──

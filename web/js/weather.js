@@ -17,7 +17,7 @@
 (function (global) {
   'use strict';
 
-  const TZ = 'Asia/Shanghai';
+  const TZ = 'auto';            // 按坐标取当地时区，理由见 api.js 的 TZ
 
   // 同一份前端要跑三种环境：
   //   · GitHub Pages —— 直连官方源（Open-Meteo 与气象局都带 ACAO:*，已验证）
@@ -130,14 +130,16 @@
       // 交给 series() 用。
       // 注意这里**不再截断** —— 返回完整数组，series() 按周期自己切，
       // window() 也会重新定位"现在"，向后兼容。
+      // 墙钟串按响应自带的 UTC 偏移读成真实时刻（海外城市不再是 +08:00）
+      const off = d.utc_offset_seconds == null ? 28800 : d.utc_offset_seconds;
       const now = Date.now() - 3 * 3600000;
       let i0 = 0;
       for (let i = 0; i < t.length; i++) {
-        if (new Date(t[i].replace(' ', 'T') + ':00+08:00').getTime() >= now) { i0 = Math.max(0, i - 1); break; }
+        if (Date.parse(t[i].replace(' ', 'T') + ':00Z') - off * 1000 >= now) { i0 = Math.max(0, i - 1); break; }
       }
       return {
         src: 'Open-Meteo',
-        time: t, i0: i0,
+        time: t, i0: i0, off: off,
         temp: h.temperature_2m || [],
         precip: (h.precipitation || []).map(v => v || 0),
         prob: (h.precipitation_probability || []).map(v => (v == null ? 0 : v)),
@@ -850,9 +852,9 @@
       if (!wx || !wx.time || !wx.time.length) return null;
       hours = hours || 48;
       let i0 = 0;
-      const now = Date.now() - 3600000;
+      const now = Date.now() - 3600000, off = wx.off == null ? 28800 : wx.off;
       for (let i = 0; i < wx.time.length; i++) {
-        const t = new Date(wx.time[i].replace(' ', 'T') + ':00+08:00').getTime();
+        const t = Date.parse(wx.time[i].replace(' ', 'T') + ':00Z') - off * 1000;
         if (t >= now) { i0 = Math.max(0, i - 2); break; }
       }
       const e = i0 + hours;
@@ -907,7 +909,7 @@
       // 主图的"7 日"（Store.loadCity 用 todayStr() 算窗口）起点是昨天，
       // 副图的"7 日"起点却变成前天 —— 上下两块图整整差一天，正是用户报的"日期没对齐"。
       // 这个 bug 只在凌晨那几个小时复现，白天怎么试都是对的，所以拖了很久才被看见。
-      const today = fmt(new Date());
+      const today = new Date(Date.now() + (hourly.off == null ? 28800 : hourly.off) * 1000).toISOString().slice(0, 10);
 
       // 分时 = "今天 00:00~23:00"，跟主图 d.intraday 完全一致。
       // 原来这里交给 window(hourly, 24)，那是"从现在往前 2 小时起 24 小时"，

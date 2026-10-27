@@ -693,9 +693,9 @@
     return (1.4826 * median(d)) || 1;
   }
 
-  /** 当地"现在"的 'YYYY-MM-DDTHH:MM'，用来切出预报段 */
-  function nowLocalStr() {
-    const d = new Date();
+  /** 城市当地"现在"的 'YYYY-MM-DDTHH:MM'，用来切出预报段 */
+  function nowLocalStr(city) {
+    const d = API.cityNow(city);
     const u = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
     return u.toISOString().slice(0, 16);
   }
@@ -1079,7 +1079,7 @@
     if (!mn || !mn.time || !mn.time.length) return null;
     const dbgComp = [];                       // 只在 DBG_COMP 为真时被填（标定用）
     const n = mn.time.length;
-    let i0 = mn.time.findIndex(t => t >= nowLocalStr());
+    let i0 = mn.time.findIndex(t => t >= nowLocalStr(city));
     if (i0 < 0) i0 = n;
     // 只用"现在"之前的：预报段不能拿来当已发生的行情
     const end = Math.max(2, Math.min(n, i0));
@@ -1111,7 +1111,7 @@
     const cf = comfort(mn, airRaw);
     const sev = severity(mn, airRaw);
     const tr = ema(sev, P.EMA_A);
-    const now = nowLocalStr();
+    const now = nowLocalStr(city);
 
     // ── 区域大盘：同一个时间轴（两边都是 past_days=92 & 同一时区），按时间串对齐 ──
     let regSev = null, regTr = null, regMap = null;

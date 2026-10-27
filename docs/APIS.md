@@ -123,6 +123,8 @@
 
 > 走过的弯路：`previous-runs-api` **不加后缀**时返回的数据与 `historical-forecast-api` **一模一样**（864/864 时刻一字不差），一度以为它只是个别名。
 
+**时区一律 `timezone=auto`**：按坐标取当地时区，返回当地墙钟串，海外城市的日 K 因此按当地零点切。实测全部 352 座城市都还是 UTC+8（乌鲁木齐、喀什给的也是 `Asia/Shanghai`），六台主机都认这个值。⚠ 它把**当前**的 `utc_offset_seconds` 套在整段序列上 —— 夏令时切换日既没有重复也没有缺的小时，代价是另一季的历史偏 1 小时（见 NOTES.md「海外城市按当地时区切日」）。
+
 **一次请求多个坐标**：`latitude=23.13,23.02,…&longitude=113.26,113.12,…` 直接返回**数组**，每个元素带自己的 `minutely_15`。同省"大盘指数"就是靠这个用一个请求拿 8 个城市的。返回的经纬度会被规整到网格（`23.13` → `23.093145`）。
 
 ### 4. 中央气象台台风网 `typhoon.nmc.cn/weatherservice`
@@ -168,6 +170,8 @@ https://earthquake.usgs.gov/fdsnws/event/1/query
 ### 7. 阿里 DataV 行政区划
 
 `https://geo.datav.aliyun.com/areas_v3/bound/{adcode}_full.json` —— 建库时用它生成 3237 条三级地名（`tools/build_places.py`）。
+
+海外城市目录 `web/data/world-cities.json`（189 座）由 `tools/build_world.py` 生成：中文名手写，坐标 / IANA 时区 / 人口取 Open-Meteo geocoding `/v1/search`，国家中文名取 `/v1/get?id=…&language=zh`（金沙萨会给出旧称「扎伊尔」，脚本里有更正表）。
 
 ### 8. 构建 / 运维期用到的
 

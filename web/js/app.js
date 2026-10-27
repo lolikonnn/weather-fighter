@@ -608,7 +608,7 @@
    *  一个都没有返回 -1（调用方显示 `--`，绝不拿数组第 0 项冒充当前）。 */
   function hourIndexAt(times) {
     if (!times || !times.length) return -1;
-    const now = new Date(), p = x => (x < 10 ? '0' + x : '' + x);
+    const now = API.cityNow(S.cur), p = x => (x < 10 ? '0' + x : '' + x);
     const key = now.getFullYear() + '-' + p(now.getMonth() + 1) + '-' + p(now.getDate()) +
       'T' + p(now.getHours());
     let i = times.findIndex(t => String(t).slice(0, 13) === key);
@@ -642,6 +642,16 @@
     return (window.ASTRO && ASTRO.moonPhaseTxt) ? ASTRO.moonPhaseTxt(dt) : '--';
   }
 
+  /** 城市当地「今天 0 点」的真实时刻 t0，以及当地墙钟比本机快多少 off（显示事件时刻时加回去）。
+   *  天文事件是真实时刻，不按城市时区挪的话，海外城市的日出会按北京的一天去找、按北京时间显示。 */
+  function cityMidnight(c, now) {
+    const at = now == null ? Date.now() : +new Date(now);
+    const d = API.cityNow(c, at);
+    const off = Math.round((d.getTime() - at) / 60000) * 60000;   // toLocaleString 丢了毫秒，取整到分钟
+    d.setHours(0, 0, 0, 0);
+    return { t0: d.getTime() - off, off: off };
+  }
+
   /** 今天的日出日落（本地 0 点起 24 小时内）—— 只在 Open-Meteo 那份拿不到时用。
    *
    *  为什么要有这个兜底：Open-Meteo 额度用尽时，行情头的「日出/日落」会变成 `--/--`，
@@ -652,12 +662,11 @@
     const c = S.cur;
     if (!window.ASTRO || !c || c.lat == null || c.lon == null) return null;
     try {
-      const t0 = new Date(now == null ? Date.now() : now);
-      t0.setHours(0, 0, 0, 0);
-      const evs = ASTRO.sunEvents(t0.getTime(), t0.getTime() + 86400000, c.lat, c.lon);
+      const { t0, off } = cityMidnight(c, now);
+      const evs = ASTRO.sunEvents(t0, t0 + 86400000, c.lat, c.lon);
       const pick = k => {
         const e = evs.filter(x => x.kind === k)[0];
-        return e ? U.fmtHM(new Date(e.t)) : '--';
+        return e ? U.fmtHM(new Date(e.t + off)) : '--';
       };
       const rise = pick('sunrise'), set = pick('sunset');
       return (rise === '--' && set === '--') ? null : (rise + '/' + set);
@@ -670,12 +679,11 @@
   function moonRiseSet(now) {
     const c = S.cur;
     if (!window.ASTRO || !c || c.lat == null || c.lon == null) return null;
-    const t0 = new Date(now == null ? Date.now() : now);
-    t0.setHours(0, 0, 0, 0);
-    const evs = ASTRO.moonEvents(t0.getTime(), t0.getTime() + 86400000, c.lat, c.lon);
+    const { t0, off } = cityMidnight(c, now);
+    const evs = ASTRO.moonEvents(t0, t0 + 86400000, c.lat, c.lon);
     const pick = k => {
       const e = evs.filter(x => x.kind === k)[0];
-      return e ? U.fmtHM(new Date(e.t)) : '--';
+      return e ? U.fmtHM(new Date(e.t + off)) : '--';
     };
     return { rise: pick('moonrise'), set: pick('moonset') };
   }
@@ -1086,7 +1094,7 @@
     else if (period === 'month') { bars = d.month; mode = 'month'; }
     // 预报K：过去的日子只留最近 10 天当参照，剩下全给未来 16 天预报。
     // 原来往回留 45 天，图上四分之三都是历史，用户反馈"过去日子的占比太多了"。
-    else if (period === 'fcst') { bars = d.daily.filter(b => b.d >= U.fmtDate(new Date(Date.now() - 10 * 86400000))); mode = 'day'; }
+    else if (period === 'fcst') { bars = d.daily.filter(b => b.d >= API.shiftDate(today, -10)); mode = 'day'; }
     else bars = d.daily;
     if (!bars || !bars.length) return null;
     const ind = IND.computeAll(bars);
@@ -1159,7 +1167,7 @@
       const pts = p === 'trend' ? d.intraday : d.seven;
       const qp = quoteOf(S.cur.id);
       Chart.renderMain({
-        mode: p, points: pts, base: d.base, ov: ov,
+        mode: p, points: pts, base: d.base, ov: ov, now: API.cityNow(S.cur),
         // seven 必须显式传：chart.js 的轴标签靠它决定"到点写日期、其余写时刻"。
         // 以前从来没传过，S.seven 恒为 undefined，所以多日分时图的横轴只有 00:00 而没有日期。
         seven: p === '7day',
@@ -1772,11 +1780,12 @@
         el('span', {
           class: 'sr-prov',
           text: c.place ? (c.prov || '') + (c.city ? ' · ' + c.city : '')
+            : c.world ? (c.prov || '') + ' · ' + c.en
             : (c.prov || '') + (c.cma ? ' · ' + c.cma : '')
         }),
         el('span', {
           class: 'sr-code',
-          text: c.place ? (c.lev === 3 ? '区县' : c.lev === 2 ? '市' : '省') : c.id
+          text: c.place ? (c.lev === 3 ? '区县' : c.lev === 2 ? '市' : '省') : c.world ? '海外' : c.id
         })
       ]);
       row.appendChild(el('span', {
