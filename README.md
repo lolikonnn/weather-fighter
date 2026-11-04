@@ -49,6 +49,16 @@ Ciallo～(∠・ω< )⌒☆
 
 数据可以看、可以用，但**不要把本仓库里的数据文件当成自己的数据再分发出去**。
 
+**署名要求（AGPL-3.0 第 7 条的附加条款）**
+
+用了这里的代码，要在**使用者能直接看到的位置**标注来源，而不只是写在源码注释里：
+
+- 在页脚、关于页、或首屏标题区（任选一处以上）写明「基于 天气战士 Weather Fighter（作者 lolikonnn）」；
+- 保留指向 [本仓库](https://github.com/lolikonnn/weather-fighter) 的可点击链接；
+- 不要删掉、藏起来、或者换成自己的署名 —— 本站在左上角留了 `By lolikonnn`，点开就是这个仓库。
+
+只写在源码注释里、或者只在自家 README 里提一句，不算「显眼的地方」。全文见 [NOTICE](NOTICE)。
+
 > **改名说明**：仓库原叫 `weather-exchange`，已改名为 **`weather-fighter`**。
 > 旧网址 `https://lolikonnn.github.io/weather-exchange/` 现在是 **404** —— GitHub Pages
 > 不会跟着仓库改名做路径跳转，请换用上面的新地址。

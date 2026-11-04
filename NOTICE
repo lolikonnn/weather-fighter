@@ -1,0 +1,28 @@
+Weather Fighter（天气战士）
+Copyright (C) 2026 lolikonnn
+https://github.com/lolikonnn/weather-fighter
+
+本项目的代码与文档按 GNU Affero General Public License v3.0 发布，协议全文见 LICENSE。
+
+--------------------------------------------------------------------------
+依 AGPL-3.0 第 7 条附加的署名要求（Attribution Requirement）
+--------------------------------------------------------------------------
+
+在本项目代码的基础上做衍生作品，或者把它部署成对外提供服务的站点/应用，
+必须在**使用者能直接看到的位置**标注来源。最低要求：
+
+  1. 在页脚、关于页、或首屏标题区中任选一处以上，写明：
+        基于 天气战士 Weather Fighter（作者 lolikonnn）
+
+  2. 保留指向 https://github.com/lolikonnn/weather-fighter 的可点击链接。
+
+  3. 不得删除、隐藏、或以自己的名字替换原作者的署名（本站在左上角署名 `By lolikonnn`，
+     点开即指向该仓库）。
+
+只写在源码注释里、或只在仓库 README 里提一句，不算「显眼的地方」。
+
+--------------------------------------------------------------------------
+
+第三方数据与素材不在上述授权范围内：气象局/中央气象台/中国天气网的数据、Open-Meteo 与
+GeoNames、Neaps 潮汐（TICON-4 / NOAA）、Wolfx 转发的地震目录、David Lorenz 光污染图集、
+阿里 DataV 底图、站点图标与角色形象，各自归各自条款，详见 README「开源协议」一节。
