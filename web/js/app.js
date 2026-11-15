@@ -1495,7 +1495,10 @@
         // 这 400ms 里可能又切过去了、或者已经在拉了 —— 那就交给正常路径去拉
         if (S.loading || (S.cur && S.cur.id === oid) || inflight[oid]) return;
         if (API.Store.peekCity && API.Store.peekCity(c2)) return;
-        try { API.Store.loadCity(c2, function () { }).catch(function () { }); } catch (e) { }
+        // 只是“把被打断的那座城补完”，与当前视图无关 —— 走轻量档（跳过 560 天 archive、逐小时 30 天），
+        // 真点过去日/周/月K 时 ensureHistoryFor 会补全量。一次全量约 11 次调用，
+        // 不值得为一座只是路过的城花掉。
+        try { API.Store.loadCity(c2, function () { }, { light: true }).catch(function () { }); } catch (e) { }
       }, 400 * (i + 1));
     });
   }
