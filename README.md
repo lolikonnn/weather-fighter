@@ -10,7 +10,7 @@
 
 [**lolikonnn.github.io/weather-fighter**](https://lolikonnn.github.io/weather-fighter/)
 
-[GitHub](https://github.com/lolikonnn/weather-fighter) · [B 站](<https://space.bilibili.com/514398962>) · [QQ 空间](<https://user.qzone.qq.com/2744759271>)
+[GitHub](https://github.com/lolikonnn/weather-fighter) · [B 站](<https://space.bilibili.com/514398962>) · [QQ 空间](<https://user.qzone.qq.com/2744759271>) · [宣传片](<https://www.bilibili.com/video/BV1Ly4i6AE9o/>)
 
 </div>
 
@@ -21,9 +21,12 @@ Ciallo～(∠・ω< )⌒☆
 | 在哪 | 地址 |
 | --- | --- |
 | GitHub | [@lolikonnn](https://github.com/lolikonnn) |
+| 宣传片 | [老实看天气很枯燥吧？](<https://www.bilibili.com/video/BV1Ly4i6AE9o/>) |
 | B 站 | <https://space.bilibili.com/514398962> |
 | QQ | `2744759271` |
 | QQ 空间 | <https://user.qzone.qq.com/2744759271> |
+
+站里到底长什么样，这支片子从头到尾走了一遍：[老实看天气很枯燥吧？](<https://www.bilibili.com/video/BV1Ly4i6AE9o/>)。
 
 <img src="docs/qq-qr.jpg" width="240" alt="QQ 2744759271 · 扫码加好友">
 
