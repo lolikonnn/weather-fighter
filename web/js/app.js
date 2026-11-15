@@ -33,7 +33,9 @@
   }
 
   const S = {
-    period: 'trend', ind: 'vol', metric: 'range',
+    // 副图默认「降水」：它比温差更常看（温差本来就是主图自己的信息），
+    // 页签顺序也把降水排在第一。页签选择本身不落盘，但 `?ind=` 深链仍可指定别的（见 urlParams）。
+    period: 'trend', ind: 'precip', metric: 'range',
     refreshMs: 900000, sortMode: 0,
     watch: [], cur: null, data: null, wx: null,
     quotes: {}, briefs: {}, briefAt: 0,
@@ -1134,7 +1136,13 @@
     if (isWxInd()) renderChart();
     const hint = $('#wxHint');
     try {
-      const wx = await Weather.ensure(c);
+      // 空气是"加分项"、会晚一步到：到的时候再画一次，别让它挡住降水／云量。
+      // ensure() 只等逐小时（+ 气象局覆盖）就返回，空气质量在后台补齐。
+      const wx = await Weather.ensure(c, null, (w) => {
+        if (!S.cur || S.cur.id !== cityId) return;
+        S.wx = w;
+        if (isWxInd()) renderChart();
+      });
       if (!S.cur || S.cur.id !== cityId) return;   // 这期间用户已经切到别的城市
       S.wx = wx;
       if (isWxInd()) renderChart();
@@ -1404,7 +1412,9 @@
       renderQuoteHead(); renderOrderbook(); renderTape(); renderChart();
       renderStatus();
       renderWatchlist(); renderIndexes();
-      loadWx(c.id);   // 逐小时/空气是副图才要，异步补上，不挡主流程
+      // 逐小时/空气只有"副图是天气口径"时才用得上：停在温差就别发（每次省下 220 KB、
+      // 十几次免费额度），等用户真的点开降水／云量时由页签那一路再补（见下面的 :1911 附近）。
+      if (isWxInd()) loadWx(c.id);
       if (d.degraded) {
         // **降级但可用**：报价头 / 五档盘口 / 逐时流水来自中国气象局，是实时的。
         // 必须说清哪部分是新的、哪部分是旧的 —— 不能让用户以为整页都是实时的。

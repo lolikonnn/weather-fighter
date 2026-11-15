@@ -180,14 +180,27 @@
 
     _wx: {},
     /** 把逐小时 + 空气质量都备好，缓存在内存里 */
-    async ensure(city, cmaH) {
+    async ensure(city, cmaH, onPartial) {
       if (!city) return null;
       const cur = this._wx[city.id];
-      if (cur && Date.now() - cur.t < 900000) return cur;
+      /* 成功的缓存 15 分钟；**失败的只缓存 60 秒**。
+         以前不分好坏一律 900 秒 —— 一次 429 或超时就让副图整整空 15 分钟，
+         而且没有重试入口（`app.js` 那边的判据是 `!S.wx`，而失败时 `S.wx` 是个对象）。
+         实测：撞上额度用尽时，用户看到的就是"等几分钟也不出来"。 */
+      const okTTL = (cur && cur.hourly && cur.hourly.time && cur.hourly.time.length) ? 900000 : 60000;
+      if (cur && Date.now() - cur.t < okTTL) return cur;
       const out = { t: Date.now(), city: city, hourly: null, air: null, err: null };
       // 92 天历史 + 16 天预报：副图要画月K就得有 24 个月……
       // 实际取 92 天（够画日K/周K，月K会只剩 3 个点，所以月K在副图上隐藏），
       // 再长会让这次请求的 JSON 大到手机上难接受。
+      /* 空气质量与逐小时**同时发**，而不是排在逐小时后面 await。
+         以前三段串行（逐小时 → 气象局 → 空气），副图必须等最后一段才出图：
+         实测冷启动点开"降水"要 7.6 秒，其中空气那段就占了 1.6 秒。
+         现在逐小时一到就登记 + 返回，空气在后台补齐（补齐时回调 onPartial 让调用方重画）。 */
+      const airP = this.air(city.lat, city.lon, 92).then((a) => {
+        out.air = a;
+        if (onPartial) { try { onPartial(out); } catch (e) { /* 调用方自己的错，别把数据一起吞掉 */ } }
+      }).catch(() => { /* 空气是加分项，失败不影响主图 */ });
       try { out.hourly = await this.hourly(city.lat, city.lon, 16, 92); }
       catch (e) { out.err = String(e.message || e); }
       /* ── 气象局优先、Open-Meteo 补缺 ──
@@ -217,8 +230,8 @@
           }
         }
       }
-      try { out.air = await this.air(city.lat, city.lon, 92); } catch (e) { /* 空气是加分项，失败不影响主图 */ }
-      this._wx[city.id] = out;
+      this._wx[city.id] = out;   // 先登记：逐小时已到，副图这就画得出来
+      void airP;                 // 空气在后台补，不等它
       return out;
     },
 
