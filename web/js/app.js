@@ -1137,13 +1137,22 @@
   /** 画天气副图；不是天气口径就返回 false，交回 chart.js 画温差柱 */
   function renderWxSub() {
     if (!isWxInd()) return false;
-    const wx = S.wx;
+    /* 主图那份逐小时里本来就有降水、云量、风、湿度、紫外、能见度
+       （`Store.loadCity` 的 `out.hourly` 就是同一次 forecast 解出来的），
+       所以副图**不必等 `Weather.ensure()` 那一轮**（它还要再取 30 天逐小时 + 空气）：
+       先用主图这份把图画出来，等 `S.wx` 到了再补一次 —— 那时多了降水概率、阵风、风向与 PM2.5。
+       判据是「里面有没有点」，不是「S.wx 在不在」：`ensure()` 取数失败时照样返回一个对象，
+       只是 `hourly.time` 是空的；拿这种空壳去画，原本画好的副图会变成一片零。 */
+    const okH = v => !!(v && v.hourly && v.hourly.time && v.hourly.time.length);
+    const wx = okH(S.wx) ? S.wx
+      : (okH(S.data) ? { hourly: S.data.hourly } : (S.wx || null));
+    const air = (S.wx && S.wx.air) || null;
     // 把主图周期和"默认显示多少根"一起传下去 —— 副图要跟主图用同一套横轴契约
     // （左右留白 / boundaryGap / 刻度函数 / dataZoom），否则上下两块图的日期对不上。
     // 连横轴类别数组也直接用主图的（Chart.mainCats()）：副图自己的聚合桶数可能只有
     // 主图 K 线根数的十分之一（实测日K 副图 60 桶 vs 主图 553 根），不共用必然错位。
     // 注意字段名是 S.period（写成 S.p 会静默回落到"分时"，副图看起来毫无变化）。
-    return WXUI.drawSub(S.ind, wx, wx && wx.air, S.period, viewOf(S.period), Chart.mainCats());
+    return WXUI.drawSub(S.ind, wx, air, S.period, viewOf(S.period), Chart.mainCats());
   }
   /** 拉当前城市的逐小时预报 + 空气质量，成功后重绘副图 */
   async function loadWx(cityId) {

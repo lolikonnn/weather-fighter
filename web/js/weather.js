@@ -905,6 +905,11 @@
       if (!hourly || !hourly.time || !hourly.time.length) return null;
 
       const T = hourly.time;
+      /* 字段可能缺：主图那份逐小时（`Store.loadCity` 的 `out.hourly`）只含
+         气温/降水/湿度/风/云/紫外/能见度，降水概率、阵风、风向是 `Weather.ensure()`
+         那一轮才补上的。副图现在会先用主图数据先画一次，所以这里必须容忍缺字段 ——
+         缺就是 null，让它自然断开，而不是抛 `Cannot read properties of undefined`。 */
+      const at = (a, i) => (a ? a[i] : null);
       const dayStr = t => String(t).slice(0, 10);
       const fmt = d => d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
       const dayAdd = (ds, n) => {
@@ -937,12 +942,12 @@
           if (dayStr(T[i]) !== today) continue;
           out0.key.push(T[i]);
           out0.label.push(T[i].slice(5, 16).replace('T', ' ').replace('-', '/'));
-          out0.temp.push(hourly.temp[i]); out0.precip.push(hourly.precip[i]);
-          out0.prob.push(hourly.prob[i]); out0.wind.push(hourly.wind[i]);
-          out0.gust.push(hourly.gust[i]); out0.windDir.push(hourly.windDir[i]);
-          out0.cloud.push(hourly.cloud[i]); out0.cloudLow.push(hourly.cloudLow[i]);
-          out0.cloudMid.push(hourly.cloudMid[i]); out0.cloudHigh.push(hourly.cloudHigh[i]);
-          out0.uv.push(hourly.uv[i]);
+          out0.temp.push(at(hourly.temp, i)); out0.precip.push(at(hourly.precip, i));
+          out0.prob.push(at(hourly.prob, i)); out0.wind.push(at(hourly.wind, i));
+          out0.gust.push(at(hourly.gust, i)); out0.windDir.push(at(hourly.windDir, i));
+          out0.cloud.push(at(hourly.cloud, i)); out0.cloudLow.push(at(hourly.cloudLow, i));
+          out0.cloudMid.push(at(hourly.cloudMid, i)); out0.cloudHigh.push(at(hourly.cloudHigh, i));
+          out0.uv.push(at(hourly.uv, i));
           const ai = air && air.time ? air.time.indexOf(T[i]) : -1;
           out0.pm25.push(ai >= 0 ? (air.pm25 || [])[ai] : null);
           out0.aqi.push(ai >= 0 ? (air.aqi || [])[ai] : null);
@@ -1010,12 +1015,12 @@
           }
         }
         b.rows.push({
-          temp: hourly.temp[i], precip: hourly.precip[i], prob: hourly.prob[i],
-          wind: hourly.wind[i], gust: hourly.gust[i], windDir: hourly.windDir[i],
-          cloud: hourly.cloud[i], cloudLow: hourly.cloudLow[i],
-          cloudMid: hourly.cloudMid[i], cloudHigh: hourly.cloudHigh[i],
+          temp: at(hourly.temp, i), precip: at(hourly.precip, i), prob: at(hourly.prob, i),
+          wind: at(hourly.wind, i), gust: at(hourly.gust, i), windDir: at(hourly.windDir, i),
+          cloud: at(hourly.cloud, i), cloudLow: at(hourly.cloudLow, i),
+          cloudMid: at(hourly.cloudMid, i), cloudHigh: at(hourly.cloudHigh, i),
           // 紫外线也跟着一起分桶：它和云量强相关，放在「空气」那一组的第二条线上看最顺
-          uv: hourly.uv[i],
+          uv: at(hourly.uv, i),
           pm25: airP('pm25', T[i]), aqi: airP('aqi', T[i])
         });
       }

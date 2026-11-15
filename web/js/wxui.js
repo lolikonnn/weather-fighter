@@ -143,20 +143,25 @@
   /** 降水：柱子＝降水量(mm)，黄线＝降水概率(%) */
   function optPrecip(w, TH, period, view) {
     const o = base(TH, w.key || w.label, 'mm', period, view);
+    /* 降水概率不一定有：主图那份逐小时只要了降水量，概率是 `Weather.ensure()` 那一路才补上的。
+       没有就**不画那条线**、提示里也不写 —— 不知道的事不能写成「概率 0%」。 */
+    const hasProb = !!(w.prob && w.prob.some(v => v != null && isFinite(v)));
     o.tooltip.formatter = ps => {
       const i = ps[0].dataIndex;
       return w.label[i] + '<br/>降水 ' + fx1(w.precip[i]) + ' mm' +
-        '<br/>概率 ' + Math.round(w.prob[i] || 0) + '%' +
+        (hasProb ? '<br/>概率 ' + Math.round(w.prob[i] || 0) + '%' : '') +
         '<br/>气温 ' + fx1(w.temp[i]) + '℃';
     };
     // ⚠ 这根轴必须**显式写到右边**：base() 建的轴默认 left，两根都留在左边的话，
     //   两列数字会画在同一个 52px 的左边距里，互相压、还溢出到柱子上。
-    o.yAxis = [o.yAxis, {
+    // 轴一律写成数组：下面按 `o.yAxis[0]` 设上限，形状不统一就会取到 undefined。
+    o.yAxis = [o.yAxis];
+    if (hasProb) o.yAxis.push({
       type: 'value', max: 100, min: 0, name: '%', position: 'right',
       nameTextStyle: { color: TH.dim, fontSize: 10.5 },
       axisLine: { show: false }, axisLabel: { color: TH.dim, fontSize: 10.5, fontFamily: 'Consolas,monospace', formatter: '{value}' },
       splitLine: { show: false }
-    }];
+    });
     const mx = Math.max(0.6, ...w.precip.map(v => v || 0));
     o.series = [
       {
@@ -165,13 +170,13 @@
           value: v == null ? 0 : v,
           itemStyle: { color: (v || 0) > 0 ? TH.blue : 'rgba(74,168,255,.22)' }
         }))
-      },
-      {
-        name: '降水概率', type: 'line', yAxisIndex: 1, smooth: true, showSymbol: false,
-        lineStyle: { width: 1.4, color: TH.accent }, itemStyle: { color: TH.accent },
-        data: (w.prob || []).map(v => (v == null ? 0 : v))
       }
     ];
+    if (hasProb) o.series.push({
+      name: '降水概率', type: 'line', yAxisIndex: 1, smooth: true, showSymbol: false,
+      lineStyle: { width: 1.4, color: TH.accent }, itemStyle: { color: TH.accent },
+      data: (w.prob || []).map(v => (v == null ? 0 : v))
+    });
     o.yAxis[0].max = Math.ceil(mx * 10) / 10;
     return o;
   }
@@ -179,10 +184,14 @@
   /** 风：柱子＝风速，虚线＝阵风，箭头＝风向 */
   function optWind(w, TH, period, view) {
     const o = base(TH, w.key || w.label, 'm/s', period, view);
+    // 阵风与风向同理：主图那份逐小时里没有，等 Weather.ensure() 补。没有就不画。
+    const hasGust = !!(w.gust && w.gust.some(v => v != null && isFinite(v)));
+    const hasDir = !!(w.windDir && w.windDir.some(v => v != null && isFinite(v)));
     o.tooltip.formatter = ps => {
       const i = ps[0].dataIndex;
-      return w.label[i] + '<br/>风速 ' + fx1(w.wind[i]) + ' m/s（' + W.dirName(w.windDir[i]) + '）' +
-        '<br/>阵风 ' + fx1(w.gust[i]) + ' m/s';
+      return w.label[i] + '<br/>风速 ' + fx1(w.wind[i]) + ' m/s' +
+        (hasDir ? '（' + W.dirName(w.windDir[i]) + '）' : '') +
+        (hasGust ? '<br/>阵风 ' + fx1(w.gust[i]) + ' m/s' : '');
     };
     const mx = Math.max(2, ...(w.gust || []).map(v => v || 0), ...(w.wind || []).map(v => v || 0));
     // 风向箭头：气象上的"风向"指风吹来的方向，箭头要指风吹去的方向，所以 +180
@@ -199,19 +208,19 @@
           value: v == null ? 0 : v,
           itemStyle: { color: v >= 10.8 ? TH.up : (v >= 5.5 ? TH.accent : TH.cyan) }
         }))
-      },
-      {
-        name: '阵风', type: 'line', smooth: true, showSymbol: false,
-        lineStyle: { width: 1.2, type: 'dashed', color: TH.violet }, itemStyle: { color: TH.violet },
-        data: (w.gust || []).map(v => (v == null ? 0 : v))
-      },
-      {
-        name: '风向', type: 'scatter', symbol: 'arrow', symbolSize: 9,
-        itemStyle: { color: '#e9edf4' }, silent: true,
-        symbolRotate: (val, p) => (p.data && p.data.symbolRotate) || 0,
-        data: arrows
       }
     ];
+    if (hasGust) o.series.push({
+      name: '阵风', type: 'line', smooth: true, showSymbol: false,
+      lineStyle: { width: 1.2, type: 'dashed', color: TH.violet }, itemStyle: { color: TH.violet },
+      data: (w.gust || []).map(v => (v == null ? 0 : v))
+    });
+    if (hasDir) o.series.push({
+      name: '风向', type: 'scatter', symbol: 'arrow', symbolSize: 9,
+      itemStyle: { color: '#e9edf4' }, silent: true,
+      symbolRotate: (val, p) => (p.data && p.data.symbolRotate) || 0,
+      data: arrows
+    });
     return o;
   }
 
