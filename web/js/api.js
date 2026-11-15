@@ -1937,8 +1937,13 @@
     snapshotKeep: CX_KEEP,
 
     /** 一次性拉齐某城市的全部分析数据 */
-    async loadCity(city, onStep) {
+    async loadCity(city, onStep, opts) {
       const step = onStep || function () { };
+      /* light = 轻量档：**不取日/周/月K 要的那 90 天以上历史**。
+         分时只要今天、7 日只要今天往后 7 天、预报K 只要 10 天历史 + 16 天预报 ——
+         30 天的 past_days 全都够。而 archive 那 560 天窗口只有 日/周/月K 用得上，
+         点开次数本来就少（使用者 2026-11 的说法），为它每座城市多花 7 次调用不值。 */
+      const light = !!(opts && opts.light);
       step('连接中国气象局…');
       /* ── 六件事一次性全发出去 ──
        * 它们之间**没有任何依赖**，原来却是一条 `await` 接一条的瀑布：手机上一次冷启动
@@ -1957,8 +1962,8 @@
         //   一次一个城市，用 10 秒 TTL 换"打开就是最新的"完全划算（理由见 CMA_FRESH_MS）。
         Cma.now(city, CMA_FRESH_MS),
         Cma.forecast(city),
-        hasLL ? OpenMeteo.archive(city.lat, city.lon, archStart, archEnd).catch(() => null) : null,
-        hasLL ? OpenMeteo.forecast(city.lat, city.lon, 92, 16).catch(() => null) : null,
+        (!light && hasLL) ? OpenMeteo.archive(city.lat, city.lon, archStart, archEnd).catch(() => null) : null,
+        hasLL ? OpenMeteo.forecast(city.lat, city.lon, light ? 30 : 92, 16).catch(() => null) : null,
         Cn.snapshot(city.id),
         city.id
           ? Promise.all([Cn.forecast(city.id).catch(() => null), Cn.officialDaily(city.id).catch(() => null)])
@@ -2128,6 +2133,9 @@
 
       const out = {
         city, now, fcst, official, cnFcst, calDaily,
+        /* 1 = 这一份是轻量档（日/周/月K 的长历史没取）。界面切到那几档时要据此补一次全量。
+           旧快照里没有这个字段 ⇒ falsy ⇒ 按全量处理，正好是安全的方向。 */
+        light: light ? 1 : 0,
         hourly: { time: times, temp: temps, precip: precs, humidity: humids, wind: winds, wcode: wcodes, cloud: clouds, uv: uvs,
           cloudLow: cloudLows, cloudMid: cloudMids, cloudHigh: cloudHighs, vis: viss },
         daily, week, month, intraday, seven,

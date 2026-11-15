@@ -1054,6 +1054,23 @@
     return (period === 'day' || period === 'fcst') ? 90 : period === 'week' ? 80 : period === 'month' ? 60 : 0;
   }
 
+  /* 哪几档要"90 天以上"的历史：日K 画 90 根、周K 80 根、月K 60 根，都必须有更早的日K。
+     预报K 的窗口也是 90，但它要的是「过去 10 天 + 未来 16 天」，30 天的轻量档已经够用。 */
+  function needsHistory(period) {
+    return period === 'day' || period === 'week' || period === 'month';
+  }
+
+  /* 手上是轻量档、用户却切到了日/周/月K ⇒ 补一次全量。
+     不在这里做"合并"：直接重跑 selectCity 最省事，也顺带把指标、日K、副图全部按全量重算一遍
+     —— 合并两套数据要处理日界、重复时次、指标重算，出错的面比省下的那点时间大得多。 */
+  let histBusy = false;
+  function ensureHistoryFor(period) {
+    if (histBusy || !needsHistory(period) || !S.cur) return;
+    if (!S.data || !S.data.light) return;
+    histBusy = true;
+    selectCity(S.cur.id).then(() => { }).catch(() => { }).then(() => { histBusy = false; });
+  }
+
   /** 分时 / 7日 下的「温差」副图。
       温差（当日最高 − 当日最低）是**每天**的量：一天一个数，摊到 24 个小时上就是一条平线 ——
       分时档下整幅图只有一根柱子，等于没信息。所以逐小时这两档换成
@@ -1364,7 +1381,7 @@
           : m;
         // 已经在显示旧数据了，就别再拿加载遮罩把它盖住 —— 那正是要避免的"进去先看一片空"
         if (!snap) Chart.showLoading(m);
-      });
+      }, { light: !needsHistory(S.period) });
       inflight[id] = loadP;
       let d;
       try {
@@ -1692,7 +1709,7 @@
           await new Promise(r => setTimeout(r, 500));
         }
         if (S.loading || !netCheap()) break;
-        try { await API.Store.loadCity(c, function () { }); done++; }
+        try { await API.Store.loadCity(c, function () { }, { light: true }); done++; }
         catch (e) { /* 单座失败不连累其它 —— 多半是 Open-Meteo 额度或网络抖动 */ }
         await new Promise(r => setTimeout(r, WARM_GAP));
       }
@@ -1915,6 +1932,7 @@
       U.$$('#periodTabs .tab').forEach(x => x.classList.remove('active'));
       t.classList.add('active');
       S.period = t.dataset.period;
+      ensureHistoryFor(S.period);
       renderChart();
     });
     // 注意 [data-ind]：这一行里还有一个 #btnOverlay（叠加开关），它没有 data-ind，
@@ -2025,6 +2043,7 @@
       if (map[e.key]) {
         S.period = map[e.key];
         U.$$('#periodTabs .tab').forEach(x => x.classList.toggle('active', x.dataset.period === S.period));
+        ensureHistoryFor(S.period);
         renderChart();
       }
       if (e.key === 'r' || e.key === 'R') $('#btnManual').click();
